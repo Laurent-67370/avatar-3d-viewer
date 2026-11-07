@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111514">
+  <meta name="description" content="Visionneuse interactive de votre avatar 3D : rotation à 360 degrés, zoom et vues guidées.">
+  <link rel="icon" type="image/png" href="./avatar-preview.png">
+  <title>Avatar 3D — Visionneuse interactive</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: oklch(0.16 0.012 165);
+      --surface: oklch(0.22 0.014 165 / 0.88);
+      --surface-hover: oklch(0.29 0.018 165 / 0.96);
+      --text: oklch(0.94 0.01 90);
+      --muted: oklch(0.73 0.015 165);
+      --line: oklch(0.42 0.018 165 / 0.5);
+      --accent: oklch(0.78 0.12 72);
+      --accent-ink: oklch(0.20 0.035 70);
+      --focus: oklch(0.86 0.14 80);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Avenir Next", "Century Gothic", "Trebuchet MS", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, canvas:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      min-height: 100dvh;
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 38%, oklch(0.29 0.022 165) 0%, oklch(0.18 0.015 165) 48%, oklch(0.13 0.012 165) 100%);
+    }
+    #stage { position: absolute; inset: 0; z-index: 2; }
+    #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #poster {
+      position: absolute;
+      z-index: 1;
+      left: 50%;
+      top: 48%;
+      width: min(78vw, 660px);
+      height: min(70vh, 660px);
+      transform: translate(-50%, -50%);
+      object-fit: contain;
+      opacity: 0.3;
+      filter: saturate(0.8);
+      transition: opacity 240ms ease-out;
+      pointer-events: none;
+    }
+    #poster.loaded { opacity: 0; }
+    .interface { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+    .topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: calc(20px + env(safe-area-inset-top)) 24px 0;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 24px oklch(0.78 0.12 72 / 0.45);
+    }
+    .brand-name { font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 6px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: oklch(0.18 0.014 165 / 0.62);
+      backdrop-filter: blur(14px);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .title-block {
+      position: absolute;
+      top: calc(84px + env(safe-area-inset-top));
+      left: 24px;
+      max-width: 280px;
+    }
+    h1 { margin: 0; font-size: clamp(26px, 3vw, 42px); font-weight: 500; line-height: 1.08; letter-spacing: -0.04em; }
+    .title-block p { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .view-switcher {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 6px;
+      transform: translateY(-50%);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      pointer-events: auto;
+    }
+    .view-button {
+      min-width: 72px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
+    }
+    .view-button:hover { background: var(--surface-hover); color: var(--text); }
+    .view-button:active { transform: scale(0.96); }
+    .view-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+    .bottom-area {
+      position: absolute;
+      left: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      width: min(920px, calc(100% - 32px));
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+    .gesture-hint {
+      width: fit-content;
+      margin: 0 auto 12px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: oklch(0.15 0.012 165 / 0.72);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 18px 48px oklch(0.08 0.01 165 / 0.32);
+      backdrop-filter: blur(20px);
+    }
+    .control-button, .download-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 15px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      background: transparent;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background-color 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out;
+    }
+    .control-button:hover, .download-button:hover { background: var(--surface-hover); border-color: var(--line); }
+    .control-button:active, .download-button:active { transform: scale(0.97); }
+    .control-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+    .download-button { border-color: var(--line); }
+    .photo-note {
+      position: absolute;
+      left: 24px;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      max-width: 210px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: oklch(0.13 0.012 165 / 0.42);
+      backdrop-filter: blur(5px);
+      transition: opacity 220ms ease-out;
+    }
+    .overlay[hidden] { display: none; }
+    .loader-card, .error-card {
+      width: min(360px, 100%);
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 24px 80px oklch(0.08 0.01 165 / 0.45);
+      text-align: center;
+    }
+    .loader-title { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+    .loader-detail { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .progress-track { height: 3px; margin-top: 20px; overflow: hidden; border-radius: 999px; background: var(--line); }
+    .progress-bar { width: 8%; height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease-out; }
+    .error-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .error-card button { width: 100%; margin-top: 8px; background: var(--accent); color: var(--accent-ink); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 700px) {
+      .topbar { padding: calc(14px + env(safe-area-inset-top)) 14px 0; }
+      .brand-name { font-size: 11px; }
+      .status { max-width: 150px; font-size: 11px; }
+      .title-block { top: calc(64px + env(safe-area-inset-top)); left: 16px; }
+      .title-block p { display: none; }
+      .view-switcher { right: 12px; padding: 4px; border-radius: 14px; }
+      .view-button { min-width: 62px; min-height: 44px; padding: 8px; font-size: 12px; }
+      .bottom-area { bottom: calc(10px + env(safe-area-inset-bottom)); width: calc(100% - 20px); }
+      .gesture-hint { margin-bottom: 8px; font-size: 12px; }
+      .controls { gap: 4px; padding: 6px; border-radius: 15px; }
+      .control-button, .download-button { min-height: 44px; padding: 9px 11px; font-size: 12px; }
+      .photo-note { display: none; }
+      #poster { width: 94vw; height: 62vh; }
+    }
+    @media (max-width: 390px) {
+      .status { display: none; }
+      .download-button { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app">
+    <img id="poster" src="./avatar-preview.png" alt="" aria-hidden="true">
+    <div id="stage"></div>
+
+    <div class="interface">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Avatar studio</span>
+        </div>
+        <div class="status" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Chargement du modèle</span>
+        </div>
+      </header>
+
+      <section class="title-block" aria-labelledby="page-title">
+        <h1 id="page-title">Votre avatar,<br>en volume.</h1>
+        <p>Un modèle 3D interactif à explorer librement, sous tous les angles.</p>
+      </section>
+
+      <nav class="view-switcher" aria-label="Vues guidées">
+        <button class="view-button" type="button" data-view="front" aria-pressed="true">Face</button>
+        <button class="view-button" type="button" data-view="side" aria-pressed="false">Profil</button>
+        <button class="view-button" type="button" data-view="back" aria-pressed="false">Dos</button>
+      </nav>
+
+      <div class="bottom-area">
+        <p class="gesture-hint" id="gesture-hint">Glissez pour tourner à 360° · Molette ou pincement pour zoomer</p>
+        <div class="controls" aria-label="Contrôles du modèle">
+          <button class="control-button" id="auto-rotate" type="button" aria-pressed="false">Rotation auto</button>
+          <button class="control-button" id="reset-view" type="button">Recentrer</button>
+          <button class="control-button" id="fullscreen" type="button">Plein écran</button>
+          <a class="download-button" href="./avatar-hd.glb" download="avatar-3d-hd.glb" title="Version haute définition, environ 4 Mo">Télécharger le 3D (HD)</a>
+        </div>
+      </div>
+
+      <p class="photo-note">Créé à partir d’une photo. Les zones non visibles sont reconstruites.</p>
+    </div>
+
+    <div class="overlay" id="loading" role="status" aria-live="polite">
+      <div class="loader-card">
+        <p class="loader-title">Préparation de votre avatar</p>
+        <p class="loader-detail" id="loading-detail">Chargement du modèle 3D texturé…</p>
+        <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="error" hidden role="alert">
+      <div class="error-card">
+        <p class="loader-title">Le modèle n’a pas pu s’afficher</p>
+        <p>Votre navigateur ne parvient pas à charger la scène 3D. Vous pouvez réessayer ou télécharger directement le modèle.</p>
+        <button class="control-button" id="retry" type="button">Réessayer</button>
+      </div>
+    </div>
+
+    <p class="sr-only" id="keyboard-help">Sur le modèle, utilisez les flèches pour tourner, les touches plus et moins pour zoomer, R pour recentrer et Espace pour la rotation automatique.</p>
+  </main>
+  <script type="module" src="./src/scene.js"></script>
+</body>
+</html>
