@@ -21,4 +21,5 @@ Si le build échoue, si un conflit apparaît ou si une modification est importan
 - Modèles : `public/avatar.glb` (version web, compressée Meshopt + WebP, nécessite `MeshoptDecoder`) et `public/avatar-standard.glb` (GLB standard sans compression pour le téléchargement ; orienté +Z, posé à y = 0, 60 cm de haut, voir `scripts/place-for-ar.mjs`) et `public/avatar-ar.glb` (version allégée pour Scene Viewer).
 - Réalité augmentée : WebXR dans la page sur Android (Scene Viewer en secours), USDZ généré à la volée pour AR Quick Look sur iPhone (`src/scene.js`).
 - Deuxième avatar sur une page séparée : `avatar-2/index.html`, fichiers dans `public/avatar-2/`, page déclarée dans `vite.config.js` (https://laurent-67370.github.io/avatar-3d-viewer/avatar-2/).
+- Statue en bronze sur une page séparée, non reliée : `statue/index.html`, fichiers dans `public/statue/` (https://laurent-67370.github.io/avatar-3d-viewer/statue/). Réglages par page sur `<main>` : `data-ar-height`, `data-fit`, `data-env-intensity`.
 - Publication automatique sur GitHub Pages à chaque modification de `main` (`.github/workflows/deploy.yml`).

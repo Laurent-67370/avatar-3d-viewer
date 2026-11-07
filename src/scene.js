@@ -117,6 +117,7 @@ const avatar = new THREE.Group();
 scene.add(avatar);
 
 let model = null;
+const ENV_INTENSITY = Number(document.getElementById('app').dataset.envIntensity) || 0.3;
 let sourceScene = null;
 let target = new THREE.Vector3(0, 1.4, 0);
 let viewDistance = 6;
@@ -223,7 +224,9 @@ function updateFraming(keepCamera = true) {
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const heightDistance = avatarSize.y / (2 * Math.tan(verticalFov / 2));
   const widthDistance = avatarSize.x / (2 * Math.tan(verticalFov / 2) * camera.aspect);
-  const distance = Math.max(heightDistance, widthDistance) * (portrait ? 1.5 : 1.38);
+  // data-fit sur <main> : recul supplémentaire pour les modèles hauts (statue en pied).
+  const fit = Number(document.getElementById('app').dataset.fit) || 1;
+  const distance = Math.max(heightDistance, widthDistance) * (portrait ? 1.5 : 1.38) * fit;
 
   if (keepCamera) {
     // Conserve l'angle et le zoom relatif choisis par l'utilisateur.
@@ -250,7 +253,8 @@ function prepareMaterials() {
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     materials.forEach((material) => {
       if (!material) return;
-      if ('envMapIntensity' in material) material.envMapIntensity = 0.3;
+      // Reflets de l'environnement : faibles pour la peau, plus forts pour le métal (data-env-intensity).
+      if ('envMapIntensity' in material) material.envMapIntensity = ENV_INTENSITY;
       ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap'].forEach((key) => {
         if (material[key]) material[key].anisotropy = Math.min(8, maxAnisotropy);
       });
@@ -330,7 +334,8 @@ document.getElementById('retry').addEventListener('click', () => location.reload
 // Android : réalité augmentée dans la page (WebXR, via ARCore) en priorité ; à défaut,
 // visionneuse de Google (Scene Viewer), dont certaines versions plantent sur certains téléphones.
 // iPhone / iPad : AR Quick Look, qui exige un fichier USDZ généré ici à la volée.
-const AR_HEIGHT = 0.6; // hauteur du buste posé sur la table, en mètres
+// Hauteur réelle en réalité augmentée (mètres) : réglable par page via data-ar-height sur <main>.
+const AR_HEIGHT = Number(document.getElementById('app').dataset.arHeight) || 0.6;
 const isAndroid = /android/i.test(navigator.userAgent);
 const supportsQuickLook = document.createElement('a').relList?.supports?.('ar') === true;
 let usdzUrl = null;

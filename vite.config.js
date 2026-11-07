@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         avatar2: resolve(import.meta.dirname, 'avatar-2/index.html'),
+        statue: resolve(import.meta.dirname, 'statue/index.html'),
       },
     },
   },
