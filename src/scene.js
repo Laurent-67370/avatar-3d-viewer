@@ -42,8 +42,8 @@ try {
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, captureMode ? 1.5 : 2));
 renderer.setSize(stage.clientWidth, stage.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
@@ -73,9 +73,9 @@ scene.environment = environmentTarget.texture;
 room.dispose();
 pmrem.dispose();
 
-scene.add(new THREE.HemisphereLight(0xe7f0ec, 0x29251f, 1.2));
+scene.add(new THREE.HemisphereLight(0xe7f0ec, 0x29251f, 0.8));
 
-const keyLight = new THREE.DirectionalLight(0xffedda, 3.1);
+const keyLight = new THREE.DirectionalLight(0xffedda, 2.3);
 keyLight.position.set(3.5, 5.5, 4.5);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(1024, 1024);
@@ -88,7 +88,7 @@ keyLight.shadow.camera.bottom = -2;
 keyLight.shadow.bias = -0.0003;
 scene.add(keyLight);
 
-const rimLight = new THREE.DirectionalLight(0xa9c8c0, 2.2);
+const rimLight = new THREE.DirectionalLight(0xa9c8c0, 1.6);
 rimLight.position.set(-4, 3.5, -4);
 scene.add(rimLight);
 
@@ -250,7 +250,7 @@ function prepareMaterials() {
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     materials.forEach((material) => {
       if (!material) return;
-      if ('envMapIntensity' in material) material.envMapIntensity = 0.85;
+      if ('envMapIntensity' in material) material.envMapIntensity = 0.3;
       ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap'].forEach((key) => {
         if (material[key]) material[key].anisotropy = Math.min(8, maxAnisotropy);
       });

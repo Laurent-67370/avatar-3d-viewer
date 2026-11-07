@@ -23,28 +23,27 @@ npm run preview   # prévisualiser dist/
 
 | Fichier | Usage | Poids | Triangles | Textures |
 |---|---|---|---|---|
-| `public/avatar.glb` | Affiché dans la page | ~1,5 Mo | 50 000 | WebP 2048, compression Meshopt |
-| `public/avatar-ar.glb` | Réalité augmentée Android (Scene Viewer) | ~2,9 Mo | 50 000 | JPEG/PNG 1024, sans compression |
-| `public/avatar-standard.glb` | Bouton « Télécharger le 3D » | ~7,6 Mo | 100 000 | JPEG/PNG 2048, sans compression |
+| `public/avatar.glb` | Affiché dans la page | ~2,7 Mo | 50 000 | WebP 2048, compression Meshopt |
+| `public/avatar-ar.glb` | Réalité augmentée Android (Scene Viewer) | ~2,9 Mo | 50 000 | JPEG 1024, sans compression |
+| `public/avatar-standard.glb` | Bouton « Télécharger le 3D » | ~6,9 Mo | 103 000 | JPEG 2048, sans compression |
 
 - `avatar.glb` est compressé pour un chargement rapide : le chargeur de la page utilise `MeshoptDecoder`, indispensable pour le lire.
 - `avatar-standard.glb` n'utilise aucune extension : il s'ouvre dans la plupart des logiciels et visionneuses 3D. Il est tourné face à l'axe +Z, posé à y = 0 et mis à l'échelle à 60 cm de haut, comme l'attendent les visionneuses de réalité augmentée.
 
-Fichiers produits avec [glTF-Transform](https://gltf-transform.dev/) à partir du modèle d'origine (11,8 Mo) :
+Avatar généré à partir d'une photo (portrait stylisé, puis conversion image → 3D). Le modèle brut (16 Mo, 103 000 triangles, textures 2048) regarde +Z : il est d'abord tourné vers +X (sens attendu par la visionneuse) et sa texture émissive, entièrement noire, est supprimée. Fichiers produits ensuite avec [glTF-Transform](https://gltf-transform.dev/) :
 
 ```bash
 gltf-transform weld source.glb a.glb
 
 # Version web
-gltf-transform simplify a.glb b.glb --ratio 0.25 --error 0.0005
+gltf-transform simplify a.glb b.glb --ratio 0.3 --error 0.001
 gltf-transform resize b.glb c.glb --width 2048 --height 2048
 gltf-transform webp c.glb d.glb --quality 88
 gltf-transform meshopt d.glb avatar.glb
 
-# Version standard
-gltf-transform simplify a.glb s1.glb --ratio 0.5 --error 0.0005
-gltf-transform resize s1.glb s2.glb --width 2048 --height 2048
-gltf-transform jpeg s2.glb s3.glb --quality 90
+# Version standard (maillage complet)
+gltf-transform resize a.glb s2.glb --width 2048 --height 2048
+gltf-transform jpeg s2.glb s3.glb --quality 90 --slots "*"   # puis normal map PNG → JPEG
 node scripts/place-for-ar.mjs s3.glb avatar-standard.glb 0.6   # orientation, sol, échelle
 
 # Version réalité augmentée (à partir de b.glb, 50 000 triangles)
