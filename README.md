@@ -23,6 +23,7 @@ Une page séparée présente un deuxième avatar : https://laurent-67370.github.
 Page séparée (sans lien depuis les avatars) : https://laurent-67370.github.io/avatar-3d-viewer/statue/
 
 - `statue/index.html` : même visionneuse ; `public/statue/` : `avatar.glb` (web, 62 000 triangles, ~2,5 Mo), `avatar-ar.glb` (~4 Mo, textures 2048 pour garder la plaque lisible), `avatar-standard.glb` (124 000 triangles, ~6,4 Mo), `avatar-preview.png`.
+- `public/statue/statue-mr-husser-2026.stl` : fichier pour impression 3D (bouton « Imprimer en 3D (STL) ») — 200 mm de haut, axe Z vers le haut, maillage réparé (une seule pièce fermée), plaque gravée en creux de 1 mm.
 - Plaque gravée « SÉBASTIEN HUSSER / Mr. Husser 2026 » directement dans la texture (projection de face du socle, texte dessiné, puis report dans la texture).
 - Réglages par page sur `<main>` : `data-ar-height` (hauteur réelle en réalité augmentée, 0,45 m), `data-fit` (recul de la caméra, 1,3 pour un modèle en pied), `data-env-intensity` (reflets, 0,85 pour le bronze ; 0,3 par défaut pour la peau).
 
