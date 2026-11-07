@@ -226,6 +226,37 @@
     .progress-bar { width: 8%; height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease-out; }
     .error-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
     .error-card button { width: 100%; margin-top: 8px; background: var(--accent); color: var(--accent-ink); }
+    /* Superposition affichée par-dessus la caméra pendant la réalité augmentée (WebXR). */
+    .ar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: calc(20px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+      background: transparent;
+      pointer-events: none;
+    }
+    .ar-message {
+      margin: 0;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: oklch(0.15 0.012 165 / 0.75);
+      color: var(--text);
+      font-size: 15px;
+      text-align: center;
+    }
+    .ar-actions {
+      display: flex;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 18px;
+      background: oklch(0.15 0.012 165 / 0.75);
+      pointer-events: auto;
+    }
+    .ar-actions .control-button { min-width: 56px; font-size: 16px; }
     .sr-only {
       position: absolute;
       width: 1px;
@@ -347,6 +378,15 @@
         <p class="loader-title">Le modèle n’a pas pu s’afficher</p>
         <p>Votre navigateur ne parvient pas à charger la scène 3D. Vous pouvez réessayer ou télécharger directement le modèle.</p>
         <button class="control-button" id="retry" type="button">Réessayer</button>
+      </div>
+    </div>
+
+    <div class="ar-overlay" id="ar-overlay" hidden>
+      <p class="ar-message" id="ar-message" role="status" aria-live="polite"></p>
+      <div class="ar-actions">
+        <button class="control-button" id="ar-left" type="button" aria-label="Tourner vers la gauche">↺</button>
+        <button class="control-button" id="ar-close" type="button">Fermer</button>
+        <button class="control-button" id="ar-right" type="button" aria-label="Tourner vers la droite">↻</button>
       </div>
     </div>
 
