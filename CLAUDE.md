@@ -19,5 +19,5 @@ Si le build échoue, si un conflit apparaît ou si une modification est importan
 
 - Visionneuse Three.js + Vite : `index.html`, `src/scene.js`.
 - Modèles : `public/avatar.glb` (version web, compressée Meshopt + WebP, nécessite `MeshoptDecoder`) et `public/avatar-standard.glb` (GLB standard sans compression pour le téléchargement ; orienté +Z, posé à y = 0, 60 cm de haut, voir `scripts/place-for-ar.mjs`) et `public/avatar-ar.glb` (version allégée pour Scene Viewer).
-- Réalité augmentée : Scene Viewer sur Android, USDZ généré à la volée pour AR Quick Look sur iPhone (`src/scene.js`).
+- Réalité augmentée : WebXR dans la page sur Android (Scene Viewer en secours), USDZ généré à la volée pour AR Quick Look sur iPhone (`src/scene.js`).
 - Publication automatique sur GitHub Pages à chaque modification de `main` (`.github/workflows/deploy.yml`).

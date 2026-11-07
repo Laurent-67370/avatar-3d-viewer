@@ -327,7 +327,8 @@ viewButtons.forEach((button) => {
 document.getElementById('retry').addEventListener('click', () => location.reload());
 
 // --- Réalité augmentée -------------------------------------------------------
-// Android : visionneuse intégrée de Google (Scene Viewer), qui lit le GLB standard.
+// Android : réalité augmentée dans la page (WebXR, via ARCore) en priorité ; à défaut,
+// visionneuse de Google (Scene Viewer), dont certaines versions plantent sur certains téléphones.
 // iPhone / iPad : AR Quick Look, qui exige un fichier USDZ généré ici à la volée.
 const AR_HEIGHT = 0.6; // hauteur du buste posé sur la table, en mètres
 const isAndroid = /android/i.test(navigator.userAgent);
@@ -348,8 +349,8 @@ function openSceneViewer(file = new URL('./avatar-ar.glb', location.href).href, 
     + `action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
 }
 
-async function buildUsdz() {
-  // Copie du modèle d'origine, tournée face à l'utilisateur, posée au sol et mise à l'échelle.
+// Copie du modèle d'origine, tournée vers +Z, base à y = 0, centrée et à l'échelle réelle.
+function createArModel() {
   const inner = sourceScene.clone();
   inner.rotation.y = -Math.PI / 2;
   inner.updateMatrixWorld(true);
@@ -362,6 +363,11 @@ async function buildUsdz() {
   const root = new THREE.Group();
   root.add(inner);
   root.updateMatrixWorld(true);
+  return root;
+}
+
+async function buildUsdz() {
+  const root = createArModel();
   const data = await new USDZExporter().parseAsync(root, { quickLookCompatible: true, maxTextureSize: 1024 });
   return URL.createObjectURL(new Blob([data], { type: 'model/vnd.usdz+zip' }));
 }
@@ -384,6 +390,135 @@ async function openQuickLook() {
   link.click();
 }
 
+// --- Réalité augmentée dans la page (WebXR) ----------------------------------
+// La caméra s'affiche dans Chrome, on vise une surface et on touche l'écran pour poser l'avatar.
+const arOverlay = document.getElementById('ar-overlay');
+const arMessage = document.getElementById('ar-message');
+let xrSession = null;
+let xrModel = null;
+let xrReticle = null;
+let xrShadow = null;
+let xrHitSource = null;
+let xrRefSpace = null;
+
+async function webXrAvailable() {
+  try {
+    return Boolean(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar'));
+  } catch {
+    return false;
+  }
+}
+
+function createXrObjects() {
+  xrModel = new THREE.Group();
+  xrModel.add(createArModel());
+  // Ombre douce sous le buste pour l'ancrer visuellement sur la surface.
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext('2d');
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, 'rgba(0,0,0,0.45)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  xrShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.75, 0.55).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false }),
+  );
+  xrShadow.position.y = 0.002;
+  xrModel.add(xrShadow);
+  xrModel.visible = false;
+
+  xrReticle = new THREE.Mesh(
+    new THREE.RingGeometry(0.07, 0.09, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xf2c46d }),
+  );
+  xrReticle.matrixAutoUpdate = false;
+  xrReticle.visible = false;
+}
+
+function rotateXrModel(angle) {
+  if (xrModel?.visible) xrModel.rotation.y += angle;
+}
+
+function onXrSelect() {
+  if (!xrReticle.visible) return;
+  xrModel.position.setFromMatrixPosition(xrReticle.matrix);
+  // Le buste se tourne vers la personne qui tient le téléphone.
+  const viewer = new THREE.Vector3().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld);
+  xrModel.rotation.y = Math.atan2(viewer.x - xrModel.position.x, viewer.z - xrModel.position.z);
+  xrModel.visible = true;
+  arMessage.textContent = 'Touchez ailleurs pour le déplacer';
+}
+
+function xrFrame(time, frame) {
+  if (frame && xrHitSource) {
+    const hits = frame.getHitTestResults(xrHitSource);
+    const pose = hits.length ? hits[0].getPose(renderer.xr.getReferenceSpace()) : null;
+    xrReticle.visible = Boolean(pose);
+    if (pose) xrReticle.matrix.fromArray(pose.transform.matrix);
+    if (!xrModel.visible) {
+      arMessage.textContent = pose ? 'Touchez l’écran pour poser l’avatar' : 'Visez une table ou le sol en bougeant lentement le téléphone';
+    }
+  }
+  renderer.render(scene, camera);
+}
+
+function endXr() {
+  xrHitSource?.cancel?.();
+  xrHitSource = null;
+  xrSession = null;
+  scene.remove(xrModel, xrReticle);
+  avatar.visible = ground.visible = ring.visible = true;
+  arOverlay.hidden = true;
+  renderer.xr.enabled = false;
+  renderer.setSize(stage.clientWidth, stage.clientHeight);
+  needsRender = true;
+  renderer.setAnimationLoop(captureMode ? null : animate);
+  statusText.textContent = 'Prêt · rotation 360°';
+}
+
+async function startXr() {
+  if (!xrModel) createXrObjects();
+  // La superposition doit être affichable avant l'ouverture de la session (dom-overlay).
+  arOverlay.hidden = false;
+  arMessage.textContent = 'Ouverture de la caméra…';
+  let session;
+  try {
+    session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: arOverlay },
+    });
+  } catch (error) {
+    arOverlay.hidden = true;
+    throw error;
+  }
+  xrSession = session;
+  // Restaure la page quelle que soit la façon dont la session se termine (bouton, retour, erreur).
+  session.addEventListener('end', endXr, { once: true });
+  arMessage.textContent = 'Visez une table ou le sol en bougeant lentement le téléphone';
+  avatar.visible = ground.visible = ring.visible = false;
+  xrModel.visible = false;
+  scene.add(xrModel, xrReticle);
+
+  renderer.xr.enabled = true;
+  renderer.xr.setReferenceSpaceType('local');
+  await renderer.xr.setSession(session);
+  const viewerSpace = await session.requestReferenceSpace('viewer');
+  xrHitSource = await session.requestHitTestSource({ space: viewerSpace });
+  session.addEventListener('select', onXrSelect);
+  renderer.setAnimationLoop(xrFrame);
+}
+
+// Les touches sur les boutons de la superposition ne doivent pas déplacer l'avatar.
+arOverlay.addEventListener('beforexrselect', (event) => {
+  if (event.target.closest('button')) event.preventDefault();
+});
+document.getElementById('ar-close').addEventListener('click', () => xrSession?.end());
+document.getElementById('ar-left').addEventListener('click', () => rotateXrModel(Math.PI / 6));
+document.getElementById('ar-right').addEventListener('click', () => rotateXrModel(-Math.PI / 6));
+
 // Avec ?debug sur Android : boutons de test pour isoler un problème de Scene Viewer.
 if (isAndroid && new URLSearchParams(location.search).has('debug')) {
   const astronaut = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
@@ -395,6 +530,12 @@ if (isAndroid && new URLSearchParams(location.search).has('debug')) {
     ['Test : avatar standard (RA)', new URL('./avatar-standard.glb', location.href).href, 'ar_only', ARCORE],
   ];
   const controls = document.querySelector('.controls');
+  webXrAvailable().then((ok) => {
+    const info = document.createElement('p');
+    info.className = 'gesture-hint';
+    info.textContent = `RA dans la page (WebXR) : ${ok ? 'disponible' : 'non disponible'}`;
+    controls.before(info);
+  });
   for (const [label, file, mode, pkg] of tests) {
     const button = document.createElement('button');
     button.className = 'control-button';
@@ -409,9 +550,23 @@ if (isAndroid || supportsQuickLook) {
   arButton.hidden = false;
   arButton.addEventListener('click', async () => {
     if (arButton.getAttribute('aria-busy') === 'true') return;
+    if (!ready || xrSession) return;
     try {
-      if (isAndroid) openSceneViewer();
-      else if (ready) await openQuickLook();
+      if (isAndroid) {
+        if (await webXrAvailable()) {
+          try {
+            await startXr();
+            return;
+          } catch (error) {
+            // Caméra refusée ou session impossible : on tente la visionneuse de Google.
+            console.error(error);
+            if (xrSession) await xrSession.end().catch(() => {});
+          }
+        }
+        openSceneViewer();
+      } else {
+        await openQuickLook();
+      }
     } catch (error) {
       console.error(error);
       statusText.textContent = 'Réalité augmentée indisponible';
