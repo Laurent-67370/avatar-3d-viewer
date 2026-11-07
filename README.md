@@ -24,7 +24,8 @@ npm run preview   # prévisualiser dist/
 | Fichier | Usage | Poids | Triangles | Textures |
 |---|---|---|---|---|
 | `public/avatar.glb` | Affiché dans la page | ~1,5 Mo | 50 000 | WebP 2048, compression Meshopt |
-| `public/avatar-standard.glb` | Bouton « Télécharger le 3D » et réalité augmentée Android | ~7,6 Mo | 100 000 | JPEG/PNG 2048, sans compression |
+| `public/avatar-ar.glb` | Réalité augmentée Android (Scene Viewer) | ~2,9 Mo | 50 000 | JPEG/PNG 1024, sans compression |
+| `public/avatar-standard.glb` | Bouton « Télécharger le 3D » | ~7,6 Mo | 100 000 | JPEG/PNG 2048, sans compression |
 
 - `avatar.glb` est compressé pour un chargement rapide : le chargeur de la page utilise `MeshoptDecoder`, indispensable pour le lire.
 - `avatar-standard.glb` n'utilise aucune extension : il s'ouvre dans la plupart des logiciels et visionneuses 3D. Il est tourné face à l'axe +Z, posé à y = 0 et mis à l'échelle à 60 cm de haut, comme l'attendent les visionneuses de réalité augmentée.
@@ -45,14 +46,21 @@ gltf-transform simplify a.glb s1.glb --ratio 0.5 --error 0.0005
 gltf-transform resize s1.glb s2.glb --width 2048 --height 2048
 gltf-transform jpeg s2.glb s3.glb --quality 90
 node scripts/place-for-ar.mjs s3.glb avatar-standard.glb 0.6   # orientation, sol, échelle
+
+# Version réalité augmentée (à partir de b.glb, 50 000 triangles)
+gltf-transform resize b.glb r1.glb --width 1024 --height 1024
+gltf-transform jpeg r1.glb r2.glb --quality 85 --slots "*"
+node scripts/place-for-ar.mjs r2.glb avatar-ar.glb 0.6
 ```
 
 ## Réalité augmentée
 
 Le bouton « Voir chez moi (AR) » n'apparaît que sur smartphone ou tablette :
 
-- **Android** : ouvre la visionneuse 3D intégrée de Google (Scene Viewer) avec `avatar-standard.glb`. En réalité augmentée si le téléphone le permet, sinon en 3D plein écran.
+- **Android** : ouvre la visionneuse 3D intégrée de Google (Scene Viewer) avec `avatar-ar.glb`. En réalité augmentée si le téléphone le permet, sinon en 3D plein écran.
 - **iPhone / iPad** : génère un fichier USDZ dans la page (`USDZExporter` de Three.js) et l'ouvre avec AR Quick Look.
+
+Diagnostic : ajouter `?debug` à l'adresse affiche les dimensions vues par la page et, sur Android, des boutons de test pour Scene Viewer (modèle de référence de Google, avatar en 3D seul, avatar standard).
 
 ## Commandes clavier
 

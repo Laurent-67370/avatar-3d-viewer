@@ -334,9 +334,9 @@ const isAndroid = /android/i.test(navigator.userAgent);
 const supportsQuickLook = document.createElement('a').relList?.supports?.('ar') === true;
 let usdzUrl = null;
 
-function openSceneViewer() {
-  const file = new URL('./avatar-standard.glb', location.href).href;
-  const params = new URLSearchParams({ file, mode: 'ar_preferred', title: 'Mon avatar 3D', resizable: 'true' });
+// Fichier allégé dédié à Scene Viewer (50 000 triangles, textures 1024) : chargement rapide.
+function openSceneViewer(file = new URL('./avatar-ar.glb', location.href).href, mode = 'ar_preferred') {
+  const params = new URLSearchParams({ file, mode, title: 'Mon avatar 3D' });
   const fallback = encodeURIComponent(location.href);
   location.href = `intent://arvr.google.com/scene-viewer/1.0?${params}`
     + `#Intent;scheme=https;package=com.google.android.googlequicksearchbox;`
@@ -377,6 +377,24 @@ async function openQuickLook() {
   link.href = usdzUrl;
   link.appendChild(document.createElement('img')); // AR Quick Look exige une image dans le lien
   link.click();
+}
+
+// Avec ?debug sur Android : boutons de test pour isoler un problème de Scene Viewer.
+if (isAndroid && new URLSearchParams(location.search).has('debug')) {
+  const tests = [
+    ['Test : modèle Google', 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', 'ar_preferred'],
+    ['Test : avatar en 3D seul', new URL('./avatar-ar.glb', location.href).href, '3d_only'],
+    ['Test : avatar standard', new URL('./avatar-standard.glb', location.href).href, 'ar_preferred'],
+  ];
+  const controls = document.querySelector('.controls');
+  for (const [label, file, mode] of tests) {
+    const button = document.createElement('button');
+    button.className = 'control-button';
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => openSceneViewer(file, mode));
+    controls.appendChild(button);
+  }
 }
 
 if (isAndroid || supportsQuickLook) {
