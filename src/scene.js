@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
 
 const stage = document.getElementById('stage');
 const loading = document.getElementById('loading');
@@ -14,6 +15,7 @@ const statusText = document.getElementById('status-text');
 const autoRotateButton = document.getElementById('auto-rotate');
 const resetButton = document.getElementById('reset-view');
 const fullscreenButton = document.getElementById('fullscreen');
+const arButton = document.getElementById('view-ar');
 const viewButtons = [...document.querySelectorAll('[data-view]')];
 const captureMode = new URLSearchParams(location.search).has('capture');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -115,6 +117,7 @@ const avatar = new THREE.Group();
 scene.add(avatar);
 
 let model = null;
+let sourceScene = null;
 let target = new THREE.Vector3(0, 1.4, 0);
 let viewDistance = 6;
 let avatarSize = null;
@@ -262,6 +265,7 @@ loader.load(
   './avatar.glb',
   (gltf) => {
     model = gltf.scene;
+    sourceScene = gltf.scene.clone();
     prepareMaterials();
     fitModel();
     ready = true;
@@ -321,6 +325,73 @@ viewButtons.forEach((button) => {
 });
 
 document.getElementById('retry').addEventListener('click', () => location.reload());
+
+// --- Réalité augmentée -------------------------------------------------------
+// Android : visionneuse intégrée de Google (Scene Viewer), qui lit le GLB standard.
+// iPhone / iPad : AR Quick Look, qui exige un fichier USDZ généré ici à la volée.
+const AR_HEIGHT = 0.6; // hauteur du buste posé sur la table, en mètres
+const isAndroid = /android/i.test(navigator.userAgent);
+const supportsQuickLook = document.createElement('a').relList?.supports?.('ar') === true;
+let usdzUrl = null;
+
+function openSceneViewer() {
+  const file = new URL('./avatar-standard.glb', location.href).href;
+  const params = new URLSearchParams({ file, mode: 'ar_preferred', title: 'Mon avatar 3D', resizable: 'true' });
+  const fallback = encodeURIComponent(location.href);
+  location.href = `intent://arvr.google.com/scene-viewer/1.0?${params}`
+    + `#Intent;scheme=https;package=com.google.android.googlequicksearchbox;`
+    + `action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
+}
+
+async function buildUsdz() {
+  // Copie du modèle d'origine, tournée face à l'utilisateur, posée au sol et mise à l'échelle.
+  const inner = sourceScene.clone();
+  inner.rotation.y = -Math.PI / 2;
+  inner.updateMatrixWorld(true);
+  const size = new THREE.Box3().setFromObject(inner).getSize(new THREE.Vector3());
+  inner.scale.setScalar(AR_HEIGHT / size.y);
+  inner.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(inner);
+  const center = box.getCenter(new THREE.Vector3());
+  inner.position.set(-center.x, -box.min.y, -center.z);
+  const root = new THREE.Group();
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const data = await new USDZExporter().parseAsync(root, { quickLookCompatible: true, maxTextureSize: 1024 });
+  return URL.createObjectURL(new Blob([data], { type: 'model/vnd.usdz+zip' }));
+}
+
+async function openQuickLook() {
+  if (!usdzUrl) {
+    arButton.setAttribute('aria-busy', 'true');
+    arButton.textContent = 'Préparation…';
+    try {
+      usdzUrl = await buildUsdz();
+    } finally {
+      arButton.removeAttribute('aria-busy');
+      arButton.textContent = 'Voir chez moi (AR)';
+    }
+  }
+  const link = document.createElement('a');
+  link.rel = 'ar';
+  link.href = usdzUrl;
+  link.appendChild(document.createElement('img')); // AR Quick Look exige une image dans le lien
+  link.click();
+}
+
+if (isAndroid || supportsQuickLook) {
+  arButton.hidden = false;
+  arButton.addEventListener('click', async () => {
+    if (arButton.getAttribute('aria-busy') === 'true') return;
+    try {
+      if (isAndroid) openSceneViewer();
+      else if (ready) await openQuickLook();
+    } catch (error) {
+      console.error(error);
+      statusText.textContent = 'Réalité augmentée indisponible';
+    }
+  });
+}
 
 if (!document.documentElement.requestFullscreen) {
   fullscreenButton.hidden = true;
