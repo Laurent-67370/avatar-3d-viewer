@@ -57,7 +57,7 @@ node scripts/place-for-ar.mjs r2.glb avatar-ar.glb 0.6
 
 Le bouton « Voir chez moi (AR) » n'apparaît que sur smartphone ou tablette :
 
-- **Android** : ouvre la visionneuse 3D intégrée de Google (Scene Viewer) avec `avatar-ar.glb`. En réalité augmentée si le téléphone le permet, sinon en 3D plein écran.
+- **Android** : ouvre Scene Viewer en réalité augmentée avec `avatar-ar.glb`, lancé via « Google Play Services pour la RA » (ARCore). Passer par l'application Google bloquait sur l'écran de chargement sur certains téléphones (Xiaomi).
 - **iPhone / iPad** : génère un fichier USDZ dans la page (`USDZExporter` de Three.js) et l'ouvre avec AR Quick Look.
 
 Diagnostic : ajouter `?debug` à l'adresse affiche les dimensions vues par la page et, sur Android, des boutons de test pour Scene Viewer (modèle de référence de Google, avatar en 3D seul, avatar standard).

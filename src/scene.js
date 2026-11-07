@@ -335,11 +335,16 @@ const supportsQuickLook = document.createElement('a').relList?.supports?.('ar') 
 let usdzUrl = null;
 
 // Fichier allégé dédié à Scene Viewer (50 000 triangles, textures 1024) : chargement rapide.
-function openSceneViewer(file = new URL('./avatar-ar.glb', location.href).href, mode = 'ar_preferred') {
+// Par défaut, Scene Viewer est lancé via « Google Play Services pour la RA » (ARCore, mode ar_only) :
+// certains téléphones (Xiaomi notamment) bloquent sur l'écran de chargement quand il passe par l'application Google.
+const ARCORE = 'com.google.ar.core';
+const GOOGLE_APP = 'com.google.android.googlequicksearchbox';
+
+function openSceneViewer(file = new URL('./avatar-ar.glb', location.href).href, mode = 'ar_only', pkg = ARCORE) {
   const params = new URLSearchParams({ file, mode, title: 'Mon avatar 3D' });
   const fallback = encodeURIComponent(location.href);
   location.href = `intent://arvr.google.com/scene-viewer/1.0?${params}`
-    + `#Intent;scheme=https;package=com.google.android.googlequicksearchbox;`
+    + `#Intent;scheme=https;package=${pkg};`
     + `action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
 }
 
@@ -381,18 +386,21 @@ async function openQuickLook() {
 
 // Avec ?debug sur Android : boutons de test pour isoler un problème de Scene Viewer.
 if (isAndroid && new URLSearchParams(location.search).has('debug')) {
+  const astronaut = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+  const avatarAr = new URL('./avatar-ar.glb', location.href).href;
   const tests = [
-    ['Test : modèle Google', 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', 'ar_preferred'],
-    ['Test : avatar en 3D seul', new URL('./avatar-ar.glb', location.href).href, '3d_only'],
-    ['Test : avatar standard', new URL('./avatar-standard.glb', location.href).href, 'ar_preferred'],
+    ['Test : modèle Google (RA)', astronaut, 'ar_only', ARCORE],
+    ['Test : modèle Google (appli Google)', astronaut, 'ar_preferred', GOOGLE_APP],
+    ['Test : avatar 3D seul (appli Google)', avatarAr, '3d_only', GOOGLE_APP],
+    ['Test : avatar standard (RA)', new URL('./avatar-standard.glb', location.href).href, 'ar_only', ARCORE],
   ];
   const controls = document.querySelector('.controls');
-  for (const [label, file, mode] of tests) {
+  for (const [label, file, mode, pkg] of tests) {
     const button = document.createElement('button');
     button.className = 'control-button';
     button.type = 'button';
     button.textContent = label;
-    button.addEventListener('click', () => openSceneViewer(file, mode));
+    button.addEventListener('click', () => openSceneViewer(file, mode, pkg));
     controls.appendChild(button);
   }
 }
