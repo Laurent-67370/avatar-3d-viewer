@@ -382,6 +382,22 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) setAutoRotate(false);
 });
 
+// Diagnostic d'affichage : ajouter ?debug à l'adresse pour lire les dimensions
+// réellement vues par la page (utile si la mise en page mobile ne s'applique pas).
+if (new URLSearchParams(location.search).has('debug')) {
+  const showDebug = () => {
+    const vv = window.visualViewport;
+    statusText.textContent = `page ${innerWidth}×${innerHeight} · écran ${screen.width}×${screen.height}`
+      + ` · ratio ${devicePixelRatio.toFixed(2)} · zoom ${vv ? vv.scale.toFixed(2) : '?'}`
+      + ` · tactile ${touchDevice ? 'oui' : 'non'}`;
+    document.querySelector('.status').style.cssText = 'display:flex;max-width:none;position:fixed;top:40px;left:8px;right:8px;z-index:9;font-size:14px;';
+  };
+  showDebug();
+  addEventListener('resize', showDebug);
+  window.visualViewport?.addEventListener('resize', showDebug);
+  loader.manager.onLoad = showDebug;
+}
+
 window.__avatarViewer = {
   setView: (name) => {
     setView(name, true);
