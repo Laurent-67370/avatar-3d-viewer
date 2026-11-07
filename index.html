@@ -21,6 +21,7 @@
       --focus: oklch(0.86 0.14 80);
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
     body {
       background: var(--bg);
@@ -187,6 +188,8 @@
     .control-button:active, .download-button:active { transform: scale(0.97); }
     .control-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
     .download-button { border-color: var(--line); }
+    .ar-button { border-color: var(--accent); }
+    .ar-button[aria-busy="true"] { opacity: 0.6; cursor: progress; }
     .photo-note {
       position: absolute;
       left: 24px;
@@ -323,7 +326,8 @@
           <button class="control-button" id="auto-rotate" type="button" aria-pressed="false">Rotation auto</button>
           <button class="control-button" id="reset-view" type="button">Recentrer</button>
           <button class="control-button" id="fullscreen" type="button">Plein écran</button>
-          <a class="download-button" href="./avatar-hd.glb" download="avatar-3d-hd.glb" title="Version haute définition, environ 4 Mo">Télécharger le 3D (HD)</a>
+          <button class="control-button ar-button" id="view-ar" type="button" hidden>Voir chez moi (AR)</button>
+          <a class="download-button" href="./avatar-standard.glb" download="avatar-3d.glb" title="Fichier GLB standard, lisible par la plupart des logiciels 3D (environ 7,5 Mo)">Télécharger le 3D</a>
         </div>
       </div>
 
