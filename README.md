@@ -4,6 +4,12 @@ Visionneuse web d'un avatar 3D (buste) créé à partir d'une photo : rotation �
 
 Construite avec [Three.js](https://threejs.org/) et [Vite](https://vite.dev/).
 
+## En ligne
+
+https://laurent-67370.github.io/avatar-3d-viewer/
+
+La page est republiée automatiquement à chaque modification de la branche `main` (workflow `.github/workflows/deploy.yml`).
+
 ## Démarrer
 
 ```bash
