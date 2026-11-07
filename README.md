@@ -10,6 +10,14 @@ https://laurent-67370.github.io/avatar-3d-viewer/
 
 La page est republiée automatiquement à chaque modification de la branche `main` (workflow `.github/workflows/deploy.yml`).
 
+## Deuxième avatar
+
+Une page séparée présente un deuxième avatar : https://laurent-67370.github.io/avatar-3d-viewer/avatar-2/
+
+- `avatar-2/index.html` : copie de la page principale (même `src/scene.js`) ;
+- `public/avatar-2/` : ses fichiers `avatar.glb` (web, ~3,2 Mo, 50 000 triangles), `avatar-ar.glb` (~3,6 Mo), `avatar-standard.glb` (~7,8 Mo, 104 000 triangles) et `avatar-preview.png`, produits avec la même chaîne que ci-dessous ;
+- `vite.config.js` déclare les deux pages (`rollupOptions.input`). Pour un avatar de plus : copier `avatar-2/`, ajouter ses fichiers dans `public/<dossier>/` et une entrée dans `vite.config.js`.
+
 ## Démarrer
 
 ```bash
