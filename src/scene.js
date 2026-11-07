@@ -17,6 +17,12 @@ const fullscreenButton = document.getElementById('fullscreen');
 const viewButtons = [...document.querySelectorAll('[data-view]')];
 const captureMode = new URLSearchParams(location.search).has('capture');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const touchDevice = matchMedia('(pointer: coarse)').matches;
+
+// Sur écran tactile, pas de molette : on adapte l'indication.
+if (touchDevice) {
+  document.getElementById('gesture-hint').textContent = 'Glissez pour tourner à 360° · Pincez pour zoomer';
+}
 
 let renderer;
 try {
@@ -111,6 +117,7 @@ scene.add(avatar);
 let model = null;
 let target = new THREE.Vector3(0, 1.4, 0);
 let viewDistance = 6;
+let avatarSize = null;
 let cameraTransition = null;
 let ready = false;
 let activeView = 'front';
@@ -192,20 +199,42 @@ function fitModel() {
 
   const box = new THREE.Box3().setFromObject(avatar);
   const size = box.getSize(new THREE.Vector3());
+  avatarSize = size;
   target = new THREE.Vector3(0, size.y * 0.51, 0);
   controls.target.copy(target);
-
-  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
-  const heightDistance = size.y / (2 * Math.tan(verticalFov / 2));
-  const widthDistance = size.x / (2 * Math.tan(verticalFov / 2) * camera.aspect);
-  viewDistance = Math.max(heightDistance, widthDistance) * 1.38;
-  controls.minDistance = viewDistance * 0.48;
-  controls.maxDistance = viewDistance * 1.8;
+  updateFraming(false);
 
   const ringScale = Math.max(0.85, size.x * 0.43);
   ring.scale.setScalar(ringScale);
   renderer.shadowMap.needsUpdate = true;
   setView('front', true);
+}
+
+// Cadrage selon le format de l'écran. Sur un téléphone en portrait, l'avatar est un peu
+// plus petit et remonté pour ne pas passer sous les boutons du bas.
+function updateFraming(keepCamera = true) {
+  if (!avatarSize) { camera.updateProjectionMatrix(); return; }
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  const portrait = camera.aspect < 0.8;
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const heightDistance = avatarSize.y / (2 * Math.tan(verticalFov / 2));
+  const widthDistance = avatarSize.x / (2 * Math.tan(verticalFov / 2) * camera.aspect);
+  const distance = Math.max(heightDistance, widthDistance) * (portrait ? 1.5 : 1.38);
+
+  if (keepCamera) {
+    // Conserve l'angle et le zoom relatif choisis par l'utilisateur.
+    const offset = camera.position.clone().sub(controls.target).multiplyScalar(distance / viewDistance);
+    camera.position.copy(controls.target).add(offset);
+  }
+  viewDistance = distance;
+  controls.minDistance = viewDistance * 0.48;
+  controls.maxDistance = viewDistance * 1.8;
+
+  if (portrait) camera.setViewOffset(width, height, 0, height * 0.09, width, height);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  controls.update();
 }
 
 function prepareMaterials() {
@@ -343,8 +372,9 @@ window.addEventListener('resize', () => {
   const width = stage.clientWidth;
   const height = stage.clientHeight;
   camera.aspect = width / height;
-  camera.updateProjectionMatrix();
   renderer.setSize(width, height);
+  updateFraming();
+  needsRender = true;
   if (ready && captureMode) renderer.render(scene, camera);
 });
 

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111514">
   <meta name="description" content="Visionneuse interactive de votre avatar 3D : rotation à 360 degrés, zoom et vues guidées.">
   <link rel="icon" type="image/png" href="./avatar-preview.png">
@@ -105,7 +105,7 @@
     h1 { margin: 0; font-size: clamp(26px, 3vw, 42px); font-weight: 500; line-height: 1.08; letter-spacing: -0.04em; }
     .title-block p { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
     .view-switcher {
-      position: absolute;
+      position: fixed;
       right: 24px;
       top: 50%;
       display: flex;
@@ -135,10 +135,11 @@
     .view-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
     .bottom-area {
       position: absolute;
-      left: 50%;
+      left: 0;
       bottom: calc(18px + env(safe-area-inset-bottom));
+      right: 0;
       width: min(920px, calc(100% - 32px));
-      transform: translateX(-50%);
+      margin-inline: auto;
       pointer-events: auto;
     }
     .gesture-hint {
@@ -239,8 +240,16 @@
       .status { max-width: 150px; font-size: 11px; }
       .title-block { top: calc(64px + env(safe-area-inset-top)); left: 16px; }
       .title-block p { display: none; }
-      .view-switcher { right: 12px; padding: 4px; border-radius: 14px; }
-      .view-button { min-width: 62px; min-height: 44px; padding: 8px; font-size: 12px; }
+      .view-switcher {
+        position: static;
+        flex-direction: row;
+        width: fit-content;
+        margin: 0 auto 8px;
+        padding: 4px;
+        transform: none;
+        border-radius: 14px;
+      }
+      .view-button { min-width: 72px; min-height: 40px; padding: 8px; font-size: 12px; }
       .bottom-area { bottom: calc(10px + env(safe-area-inset-bottom)); width: calc(100% - 20px); }
       .gesture-hint { margin-bottom: 8px; font-size: 12px; }
       .controls { gap: 4px; padding: 6px; border-radius: 15px; }
@@ -251,6 +260,30 @@
     @media (max-width: 390px) {
       .status { display: none; }
       .download-button { flex-basis: 100%; }
+    }
+    /* La note chevaucherait la barre de contrôles sur les écrans moyens. */
+    @media (max-width: 1440px) {
+      .photo-note { display: none; }
+    }
+    @media (max-height: 500px) and (orientation: landscape) {
+      .topbar { padding: 10px calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left)); }
+      .status, .title-block p, .gesture-hint, .photo-note { display: none; }
+      .title-block { top: 44px; left: calc(16px + env(safe-area-inset-left)); }
+      h1 { font-size: 22px; }
+      .view-switcher {
+        position: fixed;
+        top: 50%;
+        right: calc(12px + env(safe-area-inset-right));
+        flex-direction: column;
+        width: auto;
+        margin: 0;
+        padding: 4px;
+        transform: translateY(-50%);
+      }
+      .view-button { min-width: 64px; min-height: 40px; padding: 6px 10px; }
+      .bottom-area { bottom: calc(8px + env(safe-area-inset-bottom)); width: fit-content; max-width: calc(100% - 32px); }
+      .controls { flex-wrap: nowrap; gap: 4px; padding: 5px; border-radius: 14px; }
+      .control-button, .download-button { min-height: 40px; padding: 8px 12px; font-size: 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
@@ -279,13 +312,12 @@
         <p>Un modèle 3D interactif à explorer librement, sous tous les angles.</p>
       </section>
 
-      <nav class="view-switcher" aria-label="Vues guidées">
-        <button class="view-button" type="button" data-view="front" aria-pressed="true">Face</button>
-        <button class="view-button" type="button" data-view="side" aria-pressed="false">Profil</button>
-        <button class="view-button" type="button" data-view="back" aria-pressed="false">Dos</button>
-      </nav>
-
       <div class="bottom-area">
+        <nav class="view-switcher" aria-label="Vues guidées">
+          <button class="view-button" type="button" data-view="front" aria-pressed="true">Face</button>
+          <button class="view-button" type="button" data-view="side" aria-pressed="false">Profil</button>
+          <button class="view-button" type="button" data-view="back" aria-pressed="false">Dos</button>
+        </nav>
         <p class="gesture-hint" id="gesture-hint">Glissez pour tourner à 360° · Molette ou pincement pour zoomer</p>
         <div class="controls" aria-label="Contrôles du modèle">
           <button class="control-button" id="auto-rotate" type="button" aria-pressed="false">Rotation auto</button>
