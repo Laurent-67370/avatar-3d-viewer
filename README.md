@@ -26,6 +26,10 @@ Page séparée (sans lien depuis les avatars) : https://laurent-67370.github.io/
 - Plaque gravée « SÉBASTIEN HUSSER / Mr. Husser 2026 » directement dans la texture (projection de face du socle, texte dessiné, puis report dans la texture).
 - Réglages par page sur `<main>` : `data-ar-height` (hauteur réelle en réalité augmentée, 0,45 m), `data-fit` (recul de la caméra, 1,3 pour un modèle en pied), `data-env-intensity` (reflets, 0,85 pour le bronze ; 0,3 par défaut pour la peau).
 
+## Aperçu des liens partagés
+
+Chaque page déclare des balises Open Graph (`og:title`, `og:description`, `og:image`…) pour l'aperçu dans WhatsApp et les réseaux sociaux. Les images d'aperçu (1200 × 630, JPEG < 100 Ko) sont `public/og.jpg`, `public/avatar-2/og.jpg` et `public/statue/og.jpg`. Les URL de ces balises doivent rester absolues.
+
 ## Démarrer
 
 ```bash
